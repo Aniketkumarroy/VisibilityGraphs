@@ -43,8 +43,10 @@ float ccw(const Point& A, const Point& B, const Point& C){
 }
 bool on_segment(const Point &p, const Point &q, const Point& r){
     // Given three colinear points p, q, r, the function checks if point q lies on line segment 'pr'.
-    if (ccw(p, q, r) == 0)
-    return true;
+    if (q.x <= std::max(p.x, r.x) && q.x >= std::min(p.x, r.x)) {
+        if (q.y <= std::max(p.y, r.y) && q.y >= std::min(p.y, r.y))
+        return true;
+    }
     return false;
 }
 bool edge_intersect(const Point& p1, const Point& q1, const Edge& edge){
