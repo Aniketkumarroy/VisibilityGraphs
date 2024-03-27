@@ -6,9 +6,9 @@ project(main VERSION 1.0)
 
 add_subdirectory(visgraph)
 
-add_executable(main main.cpp)
-target_link_libraries(main PRIVATE ${VISGRAPH_LIBS} m)
-target_include_directories(main PRIVATE ${VISGRAPH_INCLUDE_DIRS})
+set(EXECUTABLE main.cpp) # your source file name
 
-find_package(Threads REQUIRED)
-target_link_libraries(main PRIVATE Threads::Threads)
+get_filename_component(TARGET ${EXECUTABLE} NAME_WE)
+add_executable(${TARGET} ${EXECUTABLE})
+target_link_libraries(${TARGET} PRIVATE ${VISGRAPH_LIBS} m)
+target_include_directories(${TARGET} PRIVATE ${VISGRAPH_INCLUDE_DIRS})
