@@ -13,29 +13,14 @@ class Timer{
         std::chrono::time_point<std::chrono::high_resolution_clock> m_StartPoint, m_EndPoint;
         const char* m_name;
     public:
-        void start(const char* s){
-            m_name = s;
-            m_StartPoint = std::chrono::high_resolution_clock::now();
-        }
-
-        Timer(const char* s){
-            start(s);
-        }
+        void start(const char* s);
+        Timer(const char* s);
         
-        Timer(){
-            start("");
-        }
+        Timer();
 
-        void stop(){
-            m_EndPoint = std::chrono::high_resolution_clock::now();
-            auto start = std::chrono::time_point_cast<std::chrono::microseconds>(m_StartPoint).time_since_epoch().count();
-            auto end = std::chrono::time_point_cast<std::chrono::microseconds>(m_EndPoint).time_since_epoch().count();
-            std::cout<<m_name<<"\nExecution Time: "<<(end - start)*0.001<<" ms("<<(end - start)<<"us)\n";
-        }
+        void stop();
 
-        ~Timer(){
-            stop();
-        }
+        ~Timer();
 };
 
 class ThreadPool
@@ -43,23 +28,19 @@ class ThreadPool
     public:
         using Task = std::function<void()>;
     
-        explicit ThreadPool(std::size_t numThreads){
-            start(numThreads);
-        }
+        explicit ThreadPool(std::size_t numThreads);
     
-        ~ThreadPool(){
-            stop();
-        }
+        ~ThreadPool();
     
         template<class T>
         auto enqueue(T&& task)->std::future<decltype(task())>{
             auto wrapper = std::make_shared<std::packaged_task<decltype(task()) ()>>(std::move(task));
-    
+
             {
                 std::unique_lock<std::mutex> lock{mEventMutex};
                 mTasks.emplace([=] {(*wrapper)();});
             }
-    
+
             mEventVar.notify_one();
             return wrapper->get_future();
         }
@@ -74,41 +55,9 @@ class ThreadPool
     
         std::queue<Task> mTasks;
     
-        void start(std::size_t numThreads){
-            for (auto i = 0u; i < numThreads; ++i){
-                mThreads.emplace_back([=] {
-                    while (true){
-                        Task task;
+        void start(std::size_t numThreads);
     
-                        {
-                            std::unique_lock<std::mutex> lock{mEventMutex};
-    
-                            mEventVar.wait(lock, [=] { return mStopping || !mTasks.empty(); });
-    
-                            if (mStopping && mTasks.empty())
-                                break;
-    
-                            task = std::move(mTasks.front());
-                            mTasks.pop();
-                        }
-    
-                        task();
-                    }
-                });
-            }
-        }
-    
-        void stop() noexcept{
-            {
-                std::unique_lock<std::mutex> lock{mEventMutex};
-                mStopping = true;
-            }
-    
-            mEventVar.notify_all();
-    
-            for (auto &thread : mThreads)
-                thread.join();
-        }
+        void stop() noexcept;
 };
 
-#endif THREADPOOL
+#endif

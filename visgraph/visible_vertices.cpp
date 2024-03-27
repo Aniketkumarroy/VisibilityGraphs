@@ -1,18 +1,6 @@
-#ifndef VSISBLE_VERTICES
-#define VSISBLE_VERTICES
-
-
 #include<algorithm>
 #include"graph.h"
-
-const int INF = 10000;
-const int CCW = 1;
-const int CW = -1;
-const int COLLINEAR = 0;
-
-const int COLIN_TOLERANCE = 10;
-const long T = pow(10, COLIN_TOLERANCE);
-const double T2 = pow(10.0, COLIN_TOLERANCE);
+#include"visible_vertices.h"
 
 float angle(const Point& center, const Point& point){
     float dx = point.x - center.x;
@@ -155,7 +143,7 @@ int point_in_polygon(const Point& p, const Graph& graph){
     }
     return -1;
 }
-Point closest_point(const Point& p, Graph& graph, int polygon_id, double length=0.001){
+Point closest_point(const Point& p, Graph& graph, int polygon_id, double length){
     // Assumes p is interior to the polygon with polygon_id. Returns the
     // closest point c outside the polygon to p, where the distance from c to
     // the intersect point from p to the edge of the polygon is length.
@@ -201,70 +189,66 @@ Point closest_point(const Point& p, Graph& graph, int polygon_id, double length=
     }
 }
 
-class ActiveEdges{
-    public:
-        std::vector<Edge> active_edges;
-        bool less_than(const Point& p1, const Point& p2, Edge edge1, Edge edge2){
-            if (edge1 == edge2)
-                return false;
-            if (!edge_intersect(p1, p2, edge2))
-                return true;
-            float edge1_dist = point_edge_distance(p1, p2, edge1);
-            float edge2_dist = point_edge_distance(p1, p2, edge2);
-            if (edge1_dist > edge2_dist)
-                return false;
-            if (edge1_dist < edge2_dist)
-                return true;
-            if (abs(edge1_dist - edge2_dist) <= 0.01){ // comparing float by having a tolerance of 0.01
-                Point same_point = edge1.p1;
-                if (edge2.contains(edge1.p1))
-                    same_point = edge1.p1;
-                else
-                    same_point = edge1.p2;
-                float angle_edge1 = angle2(p1, p2, edge1.get_adjacent(same_point));
-                float angle_edge2 = angle2(p1, p2, edge2.get_adjacent(same_point));
-                if (angle_edge1 < angle_edge2)
-                    return true;
-                return false;
-            }
-            return false;
-        }
-        int index(const Point& p1, const Point& p2, const Edge& edge){
-            int lo = 0;
-            int hi = active_edges.size();
-            while (lo < hi){
-                int mid = (lo+hi)/2;
-                if (this->less_than(p1, p2, edge, active_edges[mid]))
-                    hi = mid;
-                else
-                    lo = mid + 1;
-            }
-            return lo;
-        }
+bool ActiveEdges::less_than(const Point& p1, const Point& p2, Edge edge1, Edge edge2){
+    if (edge1 == edge2)
+        return false;
+    if (!edge_intersect(p1, p2, edge2))
+        return true;
+    float edge1_dist = point_edge_distance(p1, p2, edge1);
+    float edge2_dist = point_edge_distance(p1, p2, edge2);
+    if (edge1_dist > edge2_dist)
+        return false;
+    if (edge1_dist < edge2_dist)
+        return true;
+    if (abs(edge1_dist - edge2_dist) <= 0.01){ // comparing float by having a tolerance of 0.01
+        Point same_point = edge1.p1;
+        if (edge2.contains(edge1.p1))
+            same_point = edge1.p1;
+        else
+            same_point = edge1.p2;
+        float angle_edge1 = angle2(p1, p2, edge1.get_adjacent(same_point));
+        float angle_edge2 = angle2(p1, p2, edge2.get_adjacent(same_point));
+        if (angle_edge1 < angle_edge2)
+            return true;
+        return false;
+    }
+    return false;
+}
+int ActiveEdges::index(const Point& p1, const Point& p2, const Edge& edge){
+    int lo = 0;
+    int hi = active_edges.size();
+    while (lo < hi){
+        int mid = (lo+hi)/2;
+        if (this->less_than(p1, p2, edge, active_edges[mid]))
+            hi = mid;
+        else
+            lo = mid + 1;
+    }
+    return lo;
+}
 
-        void insert(const Point&p1, const Point&p2, Edge edge){
-            int iDx = this->index(p1, p2, edge);
-            active_edges.insert(active_edges.begin() + iDx, edge);
-        }
+void ActiveEdges::insert(const Point&p1, const Point&p2, Edge edge){
+    int iDx = this->index(p1, p2, edge);
+    active_edges.insert(active_edges.begin() + iDx, edge);
+}
 
-        void remove(const Point& p1, const Point& p2, Edge edge){
-            int iDx = this->index(p1, p2, edge) - 1;
-            if (active_edges[iDx] == edge)
-                active_edges.erase(active_edges.begin() + iDx);
-        }
+void ActiveEdges::remove(const Point& p1, const Point& p2, Edge edge){
+    int iDx = this->index(p1, p2, edge) - 1;
+    if (active_edges[iDx] == edge)
+        active_edges.erase(active_edges.begin() + iDx);
+}
 
-        Edge smallest(){
-            return active_edges[0];
-        }
+Edge ActiveEdges::smallest(){
+    return active_edges[0];
+}
 
-        int size(){
-            return active_edges.size();
-        }
+int ActiveEdges::size(){
+    return active_edges.size();
+}
 
-        Edge operator[](int index) const {
-            return active_edges[index];
-        }
-};
+Edge ActiveEdges::operator[](int index) const {
+    return active_edges[index];
+}
 
 bool Comparator(const Point& p1, const Point& p2, const Point& point) {
     double angle1 = angle(point, p1);
@@ -280,7 +264,7 @@ bool Comparator(const Point& p1, const Point& p2, const Point& point) {
     return distance1 < distance2;
 }
 
-std::unordered_set<Point> visible_vertices(const Point& point, const Graph& graph, const std::vector<Point>* GraphPoints=nullptr, const Point* origin=nullptr, const Point* destination=nullptr, int scan=1){
+std::unordered_set<Point> visible_vertices(const Point& point, const Graph& graph, const std::vector<Point>* GraphPoints, const Point* origin, const Point* destination, int scan){
     const std::unordered_set<Edge>& edges = graph.edges;
     std::vector<Point> points = (GraphPoints != nullptr) ? *GraphPoints : std::vector<Point>(graph.points.begin(), graph.points.end());
     if (origin != nullptr) points.push_back(*origin);
@@ -362,5 +346,3 @@ std::unordered_set<Point> visible_vertices(const Point& point, const Graph& grap
     }
     return visible;
 }
-
-#endif VSISBLE_VERTICES
